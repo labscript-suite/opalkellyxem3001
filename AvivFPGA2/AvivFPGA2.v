@@ -14,7 +14,8 @@
 // Dependencies: 
 //
 // Revision: 
-// Revision 0.01 - File Created
+// Revision 1.0 - Fixed critical bug in timing logic with loading in data from the
+//                FIFO buffer
 // Additional Comments: 
 //
 //////////////////////////////////////////////////////////////////////////////////
@@ -85,7 +86,8 @@ assign ybus[13] = output_clock & clk2 & use_modulated_clock;
 // Possible generation states
 parameter s_idle = 1,
           s_preparing_to_generate=2,
-          s_generating=3;
+			 s_preparing_to_generate2=3,
+          s_generating=4;
 
 // Register for holding our current state.
 reg [4:0] state; // this is 4 bits wide even though only 2 bits are used. I think the compiler shrinks it to 2 anyway.
@@ -156,6 +158,7 @@ reg internal_reset;
 
 
 reg lastRetriggerIn;
+reg lastIteration;
 
 // Initialization of state machine
 initial begin
@@ -169,6 +172,7 @@ initial begin
 	retriggerWaitSamples<=0;
 	fpgaStatusOut<=0;
 	lastRetriggerIn<=0;
+	lastIteration<=0;
 end
 
 // triggering logic
@@ -181,6 +185,7 @@ end
 
 
 reg [127:0] clock_data_from_fifo; // local register in which we will store data from the FIFO
+reg [127:0] clock_data_from_fifo2; // local register in which we will store data from the FIFO
 
 wire [47:0] on_counts;				// FIFO data contains 3 important numbers
 wire [47:0] off_counts;
@@ -208,7 +213,7 @@ always @(posedge refclk) begin
 	// read from FIFO into local register, when required
 	if (fifo_read_enable==1) begin
 		fifo_read_enable<=0;
-		clock_data_from_fifo=fifo_dout;
+		clock_data_from_fifo2=fifo_dout;
 	end
 	
 	// clear fifo_reset bit if neccesary
@@ -228,6 +233,7 @@ always @(posedge refclk) begin
 			waitingForRetrigger<=0;
 			waitedCounts<=0;
 			toggler<=0;
+			lastIteration<=0;
 
 			if (soft_generate_trig_in==1) begin
 				if (fifo_read_enable==0) begin
@@ -238,12 +244,22 @@ always @(posedge refclk) begin
 		end
 		
 		s_preparing_to_generate: begin			// this state lasts for only 1 clock cycle, to allow the first frame to be read from the FIFO
+			state<=s_preparing_to_generate2;					// and then we immediately enter the generating state.
+			mistriggerDetected<=0;  			// we also use this opportunity to reset the mistriggerDetected register.
+			fpgaStatusOut<=0;						// and reset the status flags
+			masterSamplesGenerated<=0;       // and reset the previous master sample generation count
+			retriggerWaitSamples<=0;
+			retriggerTimeoutCount<=0;
+		end
+		
+		s_preparing_to_generate2: begin			// this state lasts for only 1 clock cycle, to allow the first frame to be read from the FIFO
 			state<=s_generating;					// and then we immediately enter the generating state.
 			mistriggerDetected<=0;  			// we also use this opportunity to reset the mistriggerDetected register.
 			fpgaStatusOut<=0;						// and reset the status flags
 			masterSamplesGenerated<=0;       // and reset the previous master sample generation count
 			retriggerWaitSamples<=0;
 			retriggerTimeoutCount<=0;
+			clock_data_from_fifo<=clock_data_from_fifo2;
 		end
 		
 		s_generating: begin							// generating state
@@ -266,7 +282,7 @@ always @(posedge refclk) begin
 					   ||(edgeRetrigger && retriggerIN == retriggerValue && retriggerIN!=lastRetriggerIn && fifo_read_enable==0)// or for it to have edge of correct value
 					|| (on_counts!=0 && waitedCounts==on_counts))  //or for the wait to timeout, then move on in the fifo
 					begin		
-						fifo_read_enable<=1;									// this will cause us to move on in the fifo
+						clock_data_from_fifo<=clock_data_from_fifo2;
 						nSegsGenerated<=nSegsGenerated+1;				// let's also update status counters
 						waitingForRetrigger<=0;
 						if (on_counts!=0 && waitedCounts==on_counts)
@@ -276,9 +292,21 @@ always @(posedge refclk) begin
 				else begin
 					waitingForRetrigger<=1;
 					waitedCounts<=0;
+					fifo_read_enable<=1;									// this will cause us to move on in the fifo
 				end
 			end
 			else begin		
+				if (main_counter == 0 && repeat_counter == 0) begin
+					if (empty==0) begin							// and if there is data left in the FIFO
+						if (fifo_read_enable==0) begin
+							fifo_read_enable<=1;						// read the next frame
+							nSegsGenerated<=nSegsGenerated+1;
+						end
+					end
+					else begin
+						lastIteration<=1;
+					end
+				end
 				masterSamplesGenerated<=masterSamplesGenerated+1; // increment the master sample counter
 				if (main_counter<on_counts) begin   // if the counter indicates our output should be high
 					if (output_clock==0) begin          // then if it is low
@@ -306,16 +334,20 @@ always @(posedge refclk) begin
 						end
 						else begin											// otherwise
 							repeat_counter<=0;							// reset the repeat counter
-							if (empty==0) begin							// and if there is data left in the FIFO
-								if (fifo_read_enable==0) begin
-									fifo_read_enable<=1;						// read the next frame
-									nSegsGenerated<=nSegsGenerated+1;
-								end
-							end
-							else begin										// no data in the FIFO?
+//							if (empty==0) begin							// and if there is data left in the FIFO
+//								if (fifo_read_enable==0) begin
+//									fifo_read_enable<=1;						// read the next frame
+//									nSegsGenerated<=nSegsGenerated+1;
+//								end
+//							end
+							
+							if (lastIteration) begin										// no data in the FIFO?
 								state<=s_idle;								// then we are done. go back to idle
 								fifo_reset<=1;								// this line is probably unnecessary
 								fpgaStatusOut[0]<=1; 					// Mark the status output that we are done.
+							end
+							else begin
+								clock_data_from_fifo<=clock_data_from_fifo2;
 							end
 						end
 					end		
