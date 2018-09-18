@@ -50,3 +50,4 @@ AvivFPGA2/avivfpga2.drc
 AvivFPGA2/webtalk.log
 AvivFPGA2/*.ncd
 AvivFPGA2/*.gise
+AvivFPGA2/iseconfig/AvivFPGA2.xreport
