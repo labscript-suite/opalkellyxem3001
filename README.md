@@ -24,6 +24,14 @@ You will also need to install the Opal Kelly Front Panel SDK, including Python b
 
 If you want to modify/recompile these yourself, you will need Xilinx ISE Project Navigator v14.7. This is quite an old version, but is the newest version still compatible with the Opal Kelly Xem3001 as far as I'm aware. The ISE project files are located in the AvivFPGAv2 folder (you will want to open AvivFPGA2.xise, which will then allow you to edit AvivFPGA.v and rebuild the firmware).
 
+If you have a new Opal Kelly XEM3001 board, you will need to connect some BNC cables to the JP2 header. The relevant signal pins are:
+
+ - Clock output: JP2-17
+ - Trigger in (optional): JP2-46
+ - Ext Ref Clk In (optional): JP2-4
+ 
+There are nearby ground pins at JP2-19, JP2-49 and JP2-2
+
 ## License and copyright information:
 
     Original work copyright (C) 2008 Aviv Keshet  
