@@ -1,17 +1,17 @@
 # OpalKellyXEM3001 pseudoclock firmware for the labscript suite
 
-[project home](https://bitbucket.org/labscript_suite/opalkellyxem3001)
+[project home](https://github.com/labscript-suite/opalkellyxem3001)
 
 A FPGA based pseudoclock for the labscript suite using the Opal Kelly XEM3001 board.
 
 This is based on a fork of the Cicero Word Generator FPGA code located [here](https://github.com/akeshet/Cicero-Word-Generator/tree/master/Opal%20Kelly) and is thus licensed under the GPL as documented [here](http://akeshet.github.io/Cicero-Word-Generator/).  
 
-The FPGA logic has been modified to correct a bug in how "waits" were implemented, which caused the output state associated with the wait instruction to change prior to entering retrigger mode. The bug was documented on the Cicero project [here](https://github.com/akeshet/Cicero-Word-Generator/issues/16) however the solution was to change the expected behaviour of a "wait for retrigger" instruction to what is know known as "hold and re-trigger" instructions, rather than fixing the FPGA firmware. This is incompatible with the architecture of [the labscript suite](https://bitbucket.org/labscript_suite), so we corrected the bug in the FPGA code.
+The FPGA logic has been modified to correct a bug in how "waits" were implemented, which caused the output state associated with the wait instruction to change prior to entering retrigger mode. The bug was documented on the Cicero project [here](https://github.com/akeshet/Cicero-Word-Generator/issues/16) however the solution was to change the expected behaviour of a "wait for retrigger" instruction to what is know known as "hold and re-trigger" instructions, rather than fixing the FPGA firmware. This is incompatible with the architecture of [the labscript suite](https://github.com/labscript-suite), so we corrected the bug in the FPGA code.
 
 
 ## Project status
 
-This firmware is currently in beta-test stage. Feel free to test it out (in combination with the labscript suite), however there are likely still bugs we have not uncovered yet. If you find bugs in the firmware, please create an issue on this project! If you find bugs in the labscript device code, please log them in the [labscript_devices repository](https://bitbucket.org/labscript_suite/labscript_devices/).
+This firmware is currently in beta-test stage. Feel free to test it out (in combination with the labscript suite), however there are likely still bugs we have not uncovered yet. If you find bugs in the firmware, please create an issue on this project! If you find bugs in the labscript device code, please log them in the [labscript_devices repository](https://github.com/labscript-suite/labscript_devices/).
 
 We do not yet recommend using this for 'production' (aka experiments you care about!)
 
